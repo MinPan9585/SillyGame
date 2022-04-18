@@ -5,7 +5,7 @@ using UnityEngine;
 public class CharacterTriggerArea : MonoBehaviour
 {
     // Start is called before the first frame update
-    public ControllManager ManagerScript;
+    private ControllManager ManagerScript;
 
     private void OnTriggerEnter(Collider other)
     {
@@ -30,6 +30,11 @@ public class CharacterTriggerArea : MonoBehaviour
         {
             ManagerScript.canInteractObj.Remove(other.gameObject);
         }
+    }
+
+    void Awake()
+    {
+        ManagerScript = GameObject.Find("Manager").GetComponent<ControllManager>();
     }
 
     void Start()

@@ -1,26 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using EPOOutline;
 
 public class ControllManager : MonoBehaviour
 {
     // public int PlayerOneConID, PlayerTwoConID;
     public Vector2 PlayerOneDirection, PlayerTwoDirection, CharacterDir;
     public Vector3 CharacterDir3D;
-    public float ForceStrength, canMoveTime, MoveStepTime, PressTogetherTime;
+    public float ForceStrength, MoveStepTime;
     public bool hasPlayer_LeftSide;
-    public string hasToolName;
-    public GameObject hasToolObj, TrashBin_Mesh, RealInteractiveObj;
+    //public string hasToolName;
+    public GameObject hasToolObj, TrashBin_Mesh, RealInteractiveObj, RealToolObj;
     public Transform PutDownPlace;
 
     public List<GameObject> canSeeObj, canInteractObj;
 
 
 
-    public GameObject Character;
+    private GameObject Character;
     // Start is called before the first frame update
-    public Rigidbody CharacterRgbd;
+    private Rigidbody CharacterRgbd;
     private bool leftFeetDown, rightFeetDown, canMove, leftInteract, rightInteract;
+
+    private float canMoveTime, PressTogetherTime;
 
 
     private void MoveCharacter()
@@ -86,14 +89,19 @@ public class ControllManager : MonoBehaviour
 
     public void PickUpTool()
     {
-        if (hasToolName != "None")
+        //if already have tool in hand ---> drop off
+        if (hasToolObj != null)
         {
-            if (hasToolObj.name == "TrashBin")
+            Tool Tool_Script = hasToolObj.GetComponent<Tool>();
+
+            if (Tool_Script.Name == "TrashBin")
             {
                 TrashBin_Mesh.SetActive(false);
+
+                //disable trash outline when put down trash bin
                 if (RealInteractiveObj != null)
                 {
-                    RealInteractiveObj.GetComponent<Outline>().enabled = false;
+                    RealInteractiveObj.GetComponent<Outlinable>().enabled = false;
                     RealInteractiveObj = null;
                 }
             }
@@ -101,42 +109,32 @@ public class ControllManager : MonoBehaviour
             hasToolObj.transform.position = PutDownPlace.position;
             hasToolObj.transform.rotation = PutDownPlace.rotation;
             hasToolObj.SetActive(true);
-            hasToolName = "None";
-
+            //add drop off tool to can see obj list
+            if (!canSeeObj.Contains(hasToolObj))
+            {
+                canSeeObj.Add(hasToolObj);
+            }
+            hasToolObj = null;
         }
-        else if (canSeeObj.Count >= 1 && hasToolName == "None")
+
+        else if (canSeeObj.Count >= 1 && hasToolObj == null)
         {
-            /*GameObject realPickUpObj = canSeeObj[0];
-            float DotRecord = 0;
+            // GameObject realPickUpObj = PickRealObj(canSeeObj);
 
-            for (int i = 0; i < canSeeObj.Count - 1; i++)
+            // //pick up
+            // Tool Tool_Script = realPickUpObj.GetComponent<Tool>();
+            // //Tool_Script.Mesh.SetActive(false);
+            // realPickUpObj.SetActive(false);
+            RealToolObj.SetActive(false);
+
+            if (RealToolObj.GetComponent<Tool>().Name == "TrashBin")
             {
-                Vector3 ObjDir = (canSeeObj[i].transform.position - Character.transform.position).normalized;
-                Vector3 CharDir = CharacterDir3D.normalized;
-
-                float Dot = Vector3.Dot(ObjDir, CharDir);
-                if (i == 0)
-                {
-                    DotRecord = Dot;
-
-                }
-                else if (Dot > DotRecord)
-                {
-                    DotRecord = Dot;
-                    realPickUpObj = canSeeObj[i];
-                }
-            }*/
-            GameObject realPickUpObj = PickRealObj(canSeeObj);
-
-            if (realPickUpObj.GetComponent<Tool>().Name == "TrashBin")
-            {
-                realPickUpObj.SetActive(false);
                 TrashBin_Mesh.SetActive(true);
             }
 
-            hasToolObj = realPickUpObj;
+            hasToolObj = RealToolObj;
             canSeeObj.Remove(hasToolObj);
-            hasToolName = hasToolObj.GetComponent<Tool>().Name;
+            //hasToolName = Tool_Script.Name;
         }
     }
 
@@ -195,9 +193,11 @@ public class ControllManager : MonoBehaviour
     {
         if (leftInteract && rightInteract)
         {
-            Debug.Log("interact together");
-            if (hasToolName == "TrashBin")
+            //Debug.Log("interact together");
+            //if (hasToolName == "TrashBin")
+            if (hasToolObj != null && hasToolObj.GetComponent<Tool>().Name == "TrashBin")
             {
+                canInteractObj.Remove(RealInteractiveObj);
                 hasToolObj.GetComponent<TrashBin>().PickupTrash(RealInteractiveObj);
                 RealInteractiveObj = null;
             }
@@ -217,43 +217,87 @@ public class ControllManager : MonoBehaviour
     {
         if (canInteractObj.Count > 0)
         {
-            if (hasToolName == "TrashBin")
+            if (hasToolObj != null)
             {
-                List<GameObject> TrashList = new List<GameObject>();
-                for (int i = 0; i < canInteractObj.Count; i++)
+                //Trash
+                if (hasToolObj.GetComponent<Tool>().Name == "TrashBin")
                 {
-                    if (canInteractObj[i].GetComponent<Interactive>().Name == "Trash" && !TrashList.Contains(canInteractObj[i]))
+                    List<GameObject> TrashList = new List<GameObject>();
+                    for (int i = 0; i < canInteractObj.Count; i++)
                     {
-                        TrashList.Add(canInteractObj[i]);
+                        if (canInteractObj[i].GetComponent<Interactive>().Name == "Trash"
+                        && !TrashList.Contains(canInteractObj[i]))
+                        {
+                            TrashList.Add(canInteractObj[i]);
+                        }
+                    }
+
+                    if (TrashList.Count > 0)
+                    {
+                        GameObject RealTrash = PickRealObj(TrashList);
+
+                        if (RealInteractiveObj == null)
+                        {
+                            RealTrash.GetComponent<Outlinable>().enabled = true;
+                            RealInteractiveObj = RealTrash;
+
+                        }
+                        if (RealTrash != RealInteractiveObj)
+                        {
+                            RealInteractiveObj.GetComponent<Outlinable>().enabled = false;
+                            RealTrash.GetComponent<Outlinable>().enabled = true;
+                            RealInteractiveObj = RealTrash;
+                        }
+
                     }
                 }
 
-                if (TrashList.Count > 0)
-                {
-                    GameObject RealTrash = PickRealObj(TrashList);
-                    if (RealInteractiveObj == null)
-                    {
-                        RealTrash.GetComponent<Outline>().enabled = true;
-                        RealInteractiveObj = RealTrash;
+            }
+        }
+        else
+        {
+            if (RealInteractiveObj != null)
+            {
+                RealInteractiveObj.GetComponent<Outlinable>().enabled = false;
+                RealInteractiveObj = null;
+            }
+        }
 
-                    }
-                    if (RealTrash != RealInteractiveObj)
-                    {
-                        RealInteractiveObj.GetComponent<Outline>().enabled = false;
-                        RealTrash.GetComponent<Outline>().enabled = true;
-                        RealInteractiveObj = RealTrash;
-                    }
+    }
 
-                }
+    private void FindRealTool()
+    {
+        if (canSeeObj.Count > 0 && hasToolObj == null)
+        {
+            GameObject _realTool = PickRealObj(canSeeObj);
+
+            if (RealToolObj == null)
+            {
+                RealToolObj = _realTool;
+                RealToolObj.GetComponent<Outlinable>().enabled = true;
+            }
+            else if (RealToolObj != _realTool)
+            {
+                RealToolObj.GetComponent<Outlinable>().enabled = false;
+                RealToolObj = _realTool;
+                RealToolObj.GetComponent<Outlinable>().enabled = true;
+            }
+        }
+        else
+        {
+            if (RealToolObj != null)
+            {
+                RealToolObj.GetComponent<Outlinable>().enabled = false;
+                RealToolObj = null;
             }
         }
     }
 
     private void Awake()
     {
+        Character = GameObject.Find("Character");
         CharacterRgbd = Character.GetComponent<Rigidbody>();
         hasPlayer_LeftSide = false;
-        hasToolName = "None";
     }
     void Start()
     {
@@ -269,6 +313,6 @@ public class ControllManager : MonoBehaviour
         MoveCharacter();
         Update_canMove();
         FindRealInteractive();
-
+        FindRealTool();
     }
 }

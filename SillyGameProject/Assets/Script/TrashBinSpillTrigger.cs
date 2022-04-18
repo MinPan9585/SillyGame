@@ -10,7 +10,6 @@ public class TrashBinSpillTrigger : MonoBehaviour
     {
         if (other.tag == "Floor")
         {
-            //Debug.Log("Fall");
             TrashBin_Script.Spill();
         }
     }

@@ -6,6 +6,22 @@ public class Tool : MonoBehaviour
 {
     // Start is called before the first frame update
     public string Name;
+    public GameObject Mesh;
+    public bool isThere;
+
+    private Collider thisCollider;
+
+    public void PickUp_And_DropOff(bool isDropOff)
+    {
+        Mesh.SetActive(isDropOff);
+        thisCollider.enabled = isDropOff;
+    }
+
+    void Awake()
+    {
+        thisCollider = GetComponent<Collider>();
+    }
+
     void Start()
     {
 
@@ -16,4 +32,6 @@ public class Tool : MonoBehaviour
     {
 
     }
+
+ 
 }
